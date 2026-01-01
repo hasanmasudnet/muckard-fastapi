@@ -1,11 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
+import logging
 from app.database import get_db
-from app.schemas.user import UserCreate, UserResponse, Token, TokenRefresh, PasswordResetRequest, PasswordReset
+from app.schemas.user import UserCreate, UserResponse, Token, TokenRefresh, PasswordResetRequest, PasswordReset, OTPRequest, OTPVerify, OTPResend
 from app.services.auth_service import AuthService
 from app.api.deps import oauth2_scheme
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/auth")
 
 
@@ -77,4 +79,46 @@ async def reset_password(
     """Reset password with token"""
     auth_service = AuthService(db)
     return await auth_service.reset_password(request.token, request.new_password)
+
+
+@router.post("/send-otp", status_code=status.HTTP_200_OK)
+async def send_otp(
+    request: OTPRequest,
+    db: Session = Depends(get_db)
+):
+    """Send OTP code to email for registration"""
+    logger.info(f"[SEND_OTP] Received request for email: {request.email}, name: {request.name}")
+    try:
+        auth_service = AuthService(db)
+        result = await auth_service.send_otp_for_registration(request.email, request.name)
+        logger.info(f"[SEND_OTP] Successfully processed OTP request for: {request.email}")
+        return result
+    except Exception as e:
+        logger.error(f"[SEND_OTP] Error processing OTP request for {request.email}: {str(e)}", exc_info=True)
+        raise
+
+
+@router.post("/verify-otp", response_model=Token, status_code=status.HTTP_200_OK)
+async def verify_otp(
+    request: OTPVerify,
+    db: Session = Depends(get_db)
+):
+    """Verify OTP code and complete registration"""
+    auth_service = AuthService(db)
+    user_data = UserCreate(
+        email=request.email,
+        name=request.name,
+        password=request.password
+    )
+    return await auth_service.complete_registration_with_otp(user_data, request.otp_code)
+
+
+@router.post("/resend-otp", status_code=status.HTTP_200_OK)
+async def resend_otp(
+    request: OTPResend,
+    db: Session = Depends(get_db)
+):
+    """Resend OTP code to email"""
+    auth_service = AuthService(db)
+    return await auth_service.resend_otp(request.email, request.name)
 

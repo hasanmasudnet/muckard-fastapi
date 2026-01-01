@@ -38,6 +38,18 @@ class Settings(BaseSettings):
     # CORS
     CORS_ORIGINS: str  # Comma-separated list
     
+    # Email (Resend)
+    RESEND_KEY: str = ""  # Optional - for email functionality
+    
+    # Kafka
+    KAFKA_BOOTSTRAP_SERVERS: str = "localhost:9092"
+    KAFKA_SECURITY_PROTOCOL: str = "PLAINTEXT"  # or "SASL_SSL" for production
+    KAFKA_SASL_MECHANISM: str = ""  # "PLAIN", "SCRAM-SHA-256", etc.
+    KAFKA_SASL_USERNAME: str = ""
+    KAFKA_SASL_PASSWORD: str = ""
+    KAFKA_ONBOARDING_TOPIC: str = "onboarding.completed"
+    KAFKA_ENABLED: bool = True
+    
     class Config:
         env_file = ".env"
         case_sensitive = True

@@ -1,9 +1,24 @@
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
+import logging
+import sys
 from app.config import settings
 from app.database import get_db
-from app.api.v1 import auth, kraken, trading_data, bot_status, dashboard, profile, admin
+from app.api.v1 import auth, kraken, trading_data, bot_status, dashboard, profile, admin, onboarding
+from app.services.events.factory import get_event_publisher
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(sys.stdout)
+    ]
+)
+
+logger = logging.getLogger(__name__)
+logger.info("Starting FastAPI application...")
 
 app = FastAPI(
     title=settings.APP_NAME,
@@ -28,7 +43,11 @@ app.include_router(trading_data.router, prefix=settings.API_V1_PREFIX, tags=["Tr
 app.include_router(bot_status.router, prefix=settings.API_V1_PREFIX, tags=["Bot Status"])
 app.include_router(dashboard.router, prefix=settings.API_V1_PREFIX, tags=["Dashboard"])
 app.include_router(profile.router, prefix=settings.API_V1_PREFIX, tags=["Profile"])
+app.include_router(onboarding.router, prefix=settings.API_V1_PREFIX, tags=["Onboarding"])
 app.include_router(admin.router, prefix=settings.API_V1_PREFIX, tags=["Admin"])
+
+# Global event publisher instance
+event_publisher = None
 
 
 @app.get("/")
@@ -44,6 +63,30 @@ async def root():
 async def health_check():
     """Basic health check"""
     return {"status": "healthy"}
+
+
+@app.on_event("startup")
+async def startup_event():
+    """Initialize services on application startup"""
+    global event_publisher
+    try:
+        event_publisher = get_event_publisher()
+        logger.info("Event publisher initialized")
+    except Exception as e:
+        logger.error(f"Failed to initialize event publisher: {e}", exc_info=True)
+        event_publisher = None
+
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Cleanup on application shutdown"""
+    global event_publisher
+    if event_publisher and hasattr(event_publisher, 'flush'):
+        try:
+            event_publisher.flush()
+            logger.info("Event publisher flushed")
+        except Exception as e:
+            logger.error(f"Error flushing event publisher: {e}", exc_info=True)
 
 
 @app.get("/health/db")

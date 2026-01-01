@@ -18,6 +18,13 @@ class User(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     last_login_at = Column(DateTime(timezone=True))
+    
+    # Onboarding fields
+    country = Column(String, nullable=True)
+    state = Column(String, nullable=True)
+    experience_level = Column(String, nullable=True)  # e.g., "beginner", "intermediate", "advanced"
+    onboarding_completed = Column(Boolean, default=False, nullable=False)
+    onboarding_completed_at = Column(DateTime(timezone=True), nullable=True)
 
     # Relationships
     kraken_keys = relationship("KrakenKey", back_populates="user", cascade="all, delete-orphan")

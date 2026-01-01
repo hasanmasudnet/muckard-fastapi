@@ -45,3 +45,32 @@ class PasswordReset(BaseModel):
     token: str
     new_password: str
 
+
+class OTPRequest(BaseModel):
+    email: EmailStr
+    name: str
+
+
+class OTPVerify(BaseModel):
+    email: EmailStr
+    otp_code: str
+    name: str
+    password: str
+
+
+class OTPResend(BaseModel):
+    email: EmailStr
+    name: str
+
+
+class OnboardingData(BaseModel):
+    country: str
+    state: str
+    experience_level: str
+    has_kraken_account: bool
+
+
+class OnboardingResponse(BaseModel):
+    message: str
+    onboarding_completed: bool
+    onboarding_completed_at: Optional[datetime] = None

@@ -1,11 +1,15 @@
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta, timezone
 from fastapi import HTTPException, status
+import logging
 from app.models.user import User
 from app.schemas.user import UserCreate, UserResponse, Token
 from app.utils.security import verify_password, get_password_hash, create_access_token, create_refresh_token, decode_token
 from app.config import settings
+from app.services.otp_service import OTPService
 import uuid
+
+logger = logging.getLogger(__name__)
 
 
 class AuthService:
@@ -13,6 +17,7 @@ class AuthService:
     
     def __init__(self, db: Session):
         self.db = db
+        self.otp_service = OTPService(db)
 
     async def register_user(self, user_data: UserCreate) -> UserResponse:
         """Register a new user"""
@@ -170,4 +175,119 @@ class AuthService:
         """Reset password with token"""
         # TODO: Implement password reset with token validation
         return {"message": "Password reset not yet implemented"}
+    
+    async def send_otp_for_registration(self, email: str, name: str) -> dict:
+        """
+        Send OTP email for registration
+        
+        Args:
+            email: User's email address
+            name: User's name
+            
+        Returns:
+            dict: Success message
+        """
+        logger.info(f"[AUTH_SERVICE] send_otp_for_registration called for email: {email}, name: {name}")
+        
+        # Check if user already exists
+        logger.debug(f"[AUTH_SERVICE] Checking if user exists: {email}")
+        existing_user = self.db.query(User).filter(User.email == email).first()
+        if existing_user:
+            logger.warning(f"[AUTH_SERVICE] User already exists: {email}")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Email already registered"
+            )
+        
+        logger.info(f"[AUTH_SERVICE] User does not exist, proceeding to create OTP for: {email}")
+        
+        # Create and send OTP
+        logger.info(f"[AUTH_SERVICE] Calling otp_service.create_otp for: {email}")
+        otp_record = await self.otp_service.create_otp(email, name)
+        logger.info(f"[AUTH_SERVICE] OTP created successfully. OTP ID: {otp_record.id}, Code: {otp_record.otp_code}")
+        
+        return {"message": "OTP sent to email successfully"}
+    
+    async def complete_registration_with_otp(
+        self, 
+        user_data: UserCreate, 
+        otp_code: str
+    ) -> Token:
+        """
+        Complete user registration after OTP verification
+        
+        Args:
+            user_data: User registration data
+            otp_code: 6-digit OTP code
+            
+        Returns:
+            Token: JWT tokens for authenticated user
+        """
+        # Verify OTP
+        is_valid = await self.otp_service.verify_otp(user_data.email, otp_code)
+        if not is_valid:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid or expired OTP code"
+            )
+        
+        # Check if user already exists (double-check)
+        existing_user = self.db.query(User).filter(User.email == user_data.email).first()
+        if existing_user:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Email already registered"
+            )
+        
+        # Create new user
+        hashed_password = get_password_hash(user_data.password)
+        db_user = User(
+            email=user_data.email,
+            name=user_data.name,
+            hashed_password=hashed_password
+        )
+        self.db.add(db_user)
+        self.db.commit()
+        self.db.refresh(db_user)
+        
+        # Create tokens for immediate login
+        access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+        refresh_token_expires = timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+        
+        access_token = create_access_token(
+            data={"sub": str(db_user.id), "email": db_user.email},
+            expires_delta=access_token_expires
+        )
+        refresh_token = create_refresh_token(
+            data={"sub": str(db_user.id), "type": "refresh"}
+        )
+        
+        return Token(
+            access_token=access_token,
+            refresh_token=refresh_token
+        )
+    
+    async def resend_otp(self, email: str, name: str) -> dict:
+        """
+        Resend OTP code for registration
+        
+        Args:
+            email: User's email address
+            name: User's name
+            
+        Returns:
+            dict: Success message
+        """
+        # Check if user already exists
+        existing_user = self.db.query(User).filter(User.email == email).first()
+        if existing_user:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Email already registered"
+            )
+        
+        # Resend OTP
+        await self.otp_service.resend_otp(email, name)
+        
+        return {"message": "OTP resent to email successfully"}
 
