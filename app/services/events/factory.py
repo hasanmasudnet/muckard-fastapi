@@ -16,24 +16,35 @@ def get_event_publisher() -> EventPublisher:
     Returns:
         EventPublisher: Configured event publisher instance
     """
-    if not settings.KAFKA_ENABLED:
-        logger.info("Kafka disabled, using NoOpEventPublisher")
+    try:
+        # Check if Kafka is enabled
+        kafka_enabled = getattr(settings, 'KAFKA_ENABLED', True)
+        if not kafka_enabled:
+            logger.info("Kafka disabled, using NoOpEventPublisher")
+            return NoOpEventPublisher()
+        
+        # Get Kafka settings with defaults
+        bootstrap_servers = getattr(settings, 'KAFKA_BOOTSTRAP_SERVERS', 'localhost:9092')
+        security_protocol = getattr(settings, 'KAFKA_SECURITY_PROTOCOL', 'PLAINTEXT')
+        
+        # Build Kafka configuration
+        kafka_config = {
+            'bootstrap.servers': bootstrap_servers,
+            'security.protocol': security_protocol,
+        }
+        
+        # Add SASL authentication if configured
+        sasl_mechanism = getattr(settings, 'KAFKA_SASL_MECHANISM', '')
+        if sasl_mechanism:
+            kafka_config.update({
+                'sasl.mechanism': sasl_mechanism,
+                'sasl.username': getattr(settings, 'KAFKA_SASL_USERNAME', ''),
+                'sasl.password': getattr(settings, 'KAFKA_SASL_PASSWORD', ''),
+            })
+        
+        logger.info(f"Creating KafkaEventPublisher with config: {bootstrap_servers}")
+        return KafkaEventPublisher(kafka_config)
+    except Exception as e:
+        logger.error(f"Failed to create Kafka publisher, using NoOpEventPublisher: {e}", exc_info=True)
         return NoOpEventPublisher()
-    
-    # Build Kafka configuration
-    kafka_config = {
-        'bootstrap.servers': settings.KAFKA_BOOTSTRAP_SERVERS,
-        'security.protocol': settings.KAFKA_SECURITY_PROTOCOL,
-    }
-    
-    # Add SASL authentication if configured
-    if settings.KAFKA_SASL_MECHANISM:
-        kafka_config.update({
-            'sasl.mechanism': settings.KAFKA_SASL_MECHANISM,
-            'sasl.username': settings.KAFKA_SASL_USERNAME,
-            'sasl.password': settings.KAFKA_SASL_PASSWORD,
-        })
-    
-    logger.info(f"Creating KafkaEventPublisher with config: {settings.KAFKA_BOOTSTRAP_SERVERS}")
-    return KafkaEventPublisher(kafka_config)
 

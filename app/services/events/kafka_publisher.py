@@ -64,7 +64,20 @@ class KafkaEventPublisher(EventPublisher):
             str: Kafka topic name
         """
         topic_map = {
+            # User events
+            "user.created": settings.KAFKA_USER_EVENTS_TOPIC,
+            "user.updated": settings.KAFKA_USER_EVENTS_TOPIC,
+            "user.logged_in": settings.KAFKA_USER_EVENTS_TOPIC,
+            # Onboarding events
             "onboarding.completed": settings.KAFKA_ONBOARDING_TOPIC,
+            # Kraken events
+            "kraken.key.connected": settings.KAFKA_KRAKEN_EVENTS_TOPIC,
+            "kraken.key.disconnected": settings.KAFKA_KRAKEN_EVENTS_TOPIC,
+            "kraken.key.updated": settings.KAFKA_KRAKEN_EVENTS_TOPIC,
+            # Trading events
+            "bot.trade.executed": settings.KAFKA_TRADING_EVENTS_TOPIC,
+            "bot.trade.skipped": settings.KAFKA_TRADING_EVENTS_TOPIC,
+            "trade.executed": settings.KAFKA_TRADING_EVENTS_TOPIC,
         }
         return topic_map.get(event_type, "default")
     
