@@ -1,29 +1,16 @@
-# FastAPI Backend - Project Structure
+# Microservices Architecture - Project Structure
 
 ## 📁 Complete Project Structure
 
 ```
-fastapi-backend/
-├── app/
+muckard-fastapi/
+├── app/                              # Shared code (utilities, models, config)
 │   ├── __init__.py
-│   ├── main.py                    # FastAPI application entry point
-│   ├── config.py                  # Configuration (reads from .env)
-│   ├── database.py                # Database setup & session management
+│   ├── main.py                       # DEPRECATED - Use microservices instead
+│   ├── config.py                     # Shared configuration (reads from .env)
+│   ├── database.py                   # Shared database connection
 │   │
-│   ├── api/                       # API Routes
-│   │   ├── __init__.py
-│   │   ├── deps.py                # Dependencies (auth, admin checks)
-│   │   └── v1/                    # API v1 endpoints
-│   │       ├── __init__.py
-│   │       ├── auth.py            # Authentication endpoints (7)
-│   │       ├── kraken.py          # Kraken integration (6)
-│   │       ├── trading_data.py    # Trading data endpoints (5)
-│   │       ├── bot_status.py      # Bot status endpoints (6)
-│   │       ├── dashboard.py       # Dashboard endpoints (4)
-│   │       ├── profile.py         # Profile endpoints (4)
-│   │       └── admin.py           # Admin endpoints (48)
-│   │
-│   ├── models/                     # SQLAlchemy Models (12 tables)
+│   ├── models/                       # Shared SQLAlchemy Models
 │   │   ├── __init__.py
 │   │   ├── user.py
 │   │   ├── kraken_key.py
@@ -36,9 +23,10 @@ fastapi-backend/
 │   │   ├── role.py
 │   │   ├── permission.py
 │   │   ├── role_permission.py
-│   │   └── user_role.py
+│   │   ├── user_role.py
+│   │   └── otp.py
 │   │
-│   ├── schemas/                    # Pydantic Schemas
+│   ├── schemas/                      # Shared Pydantic Schemas
 │   │   ├── __init__.py
 │   │   ├── user.py
 │   │   ├── kraken.py
@@ -49,90 +37,131 @@ fastapi-backend/
 │   │   ├── notification.py
 │   │   └── support.py
 │   │
-│   ├── services/                   # Business Logic (Agents)
+│   ├── services/                     # Shared infrastructure only
 │   │   ├── __init__.py
-│   │   ├── auth_service.py        # Authentication Agent
-│   │   ├── kraken_service.py      # Kraken Integration Agent
-│   │   ├── trading_data_service.py # Trading Data Agent
-│   │   ├── bot_status_service.py  # Bot Status Agent
-│   │   ├── dashboard_service.py   # Dashboard Service
-│   │   └── user_service.py        # User Management
+│   │   └── events/                    # Event publishing infrastructure
+│   │       ├── __init__.py
+│   │       ├── event_publisher.py
+│   │       ├── event_types.py
+│   │       ├── factory.py
+│   │       └── kafka_publisher.py
 │   │
-│   └── utils/                      # Utilities
+│   └── utils/                        # Shared utilities
 │       ├── __init__.py
-│       ├── security.py            # JWT, password hashing
-│       ├── redis_client.py        # Redis caching
-│       ├── vault_service.py       # HashiCorp Vault integration
-│       ├── kraken_client.py       # Kraken API client
-│       └── validators.py          # Input validation
+│       ├── security.py               # JWT, password hashing
+│       ├── redis_client.py           # Redis caching
+│       ├── vault_service.py           # HashiCorp Vault integration
+│       ├── kraken_client.py          # Kraken API client
+│       ├── validators.py             # Input validation
+│       ├── event_publisher.py        # Unified event publisher (Kafka/RabbitMQ)
+│       ├── kafka_consumer.py         # Kafka consumer utilities
+│       └── rabbitmq_client.py        # RabbitMQ client utilities
 │
-├── alembic/                        # Database Migrations
-│   ├── env.py
+├── services/                         # Microservices
+│   │
+│   ├── user-service/                 # User Service (Port 8000)
+│   │   ├── main.py                   # Service entry point
+│   │   ├── config.py                 # Service-specific config
+│   │   ├── database.py               # Service database connection
+│   │   │
+│   │   ├── api/                      # API Routes
+│   │   │   ├── __init__.py
+│   │   │   ├── deps.py               # Dependencies (auth)
+│   │   │   └── v1/
+│   │   │       ├── __init__.py
+│   │   │       ├── auth.py           # Authentication endpoints
+│   │   │       ├── onboarding.py     # Onboarding endpoints
+│   │   │       └── profile.py        # Profile endpoints
+│   │   │
+│   │   ├── models/                   # Service-specific models
+│   │   │   ├── __init__.py
+│   │   │   ├── user.py               # User model (service-specific)
+│   │   │   └── otp.py                # OTP model
+│   │   │
+│   │   ├── schemas/                  # Service-specific schemas
+│   │   │   ├── __init__.py
+│   │   │   └── user.py
+│   │   │
+│   │   ├── services/                 # Business logic
+│   │   │   ├── __init__.py
+│   │   │   ├── auth_service.py       # Authentication service
+│   │   │   ├── user_service.py        # User management service
+│   │   │   ├── otp_service.py         # OTP service
+│   │   │   └── email_service.py       # Email service
+│   │   │
+│   │   └── utils/                    # Service-specific utilities
+│   │       ├── security.py
+│   │       ├── redis_client.py
+│   │       └── rabbitmq_client.py
+│   │
+│   └── kraken-service/               # Kraken Service (Port 8001)
+│       ├── main.py                   # Service entry point
+│       ├── config.py                 # Service-specific config
+│       ├── database.py               # Service database connection
+│       │
+│       ├── api/                      # API Routes
+│       │   └── v1/                    # (Routes to be implemented)
+│       │
+│       ├── models/                   # Service-specific models (if any)
+│       │
+│       ├── schemas/                  # Service-specific schemas (if any)
+│       │
+│       ├── services/                 # Business logic
+│       │   ├── __init__.py
+│       │   ├── kraken_service.py     # Kraken integration service
+│       │   ├── trading_data_service.py # Trading data service
+│       │   ├── bot_status_service.py  # Bot status service
+│       │   └── rabbitmq_consumer.py   # RabbitMQ consumer
+│       │
+│       └── utils/                    # Service-specific utilities
+│           └── rabbitmq_client.py
+│
+├── alembic/                          # Centralized Database Migrations
+│   ├── env.py                        # Imports models from all services
 │   ├── script.py.mako
-│   └── README
+│   ├── README
+│   └── versions/                     # Migration files
 │
-├── .gitignore
-├── alembic.ini                     # Alembic configuration
-├── requirements.txt                # Python dependencies
-├── env.example                     # Environment variables template
-├── README.md                       # Project documentation
-└── PROJECT_STRUCTURE.md           # This file
+├── .env                              # Shared configuration (project root)
+├── .env.example                      # Environment variables template
+├── alembic.ini                       # Alembic configuration
+├── requirements.txt                  # Python dependencies
+├── start_services.py                # Script to start all microservices
+├── verify_services.py               # Script to verify services
+├── test_messaging_architecture.py   # Integration tests
+├── README.md                         # Project documentation
+└── PROJECT_STRUCTURE.md              # This file
 ```
 
-## 🎯 BMAD-METHOD V6 Agents Implemented
+## 🏗️ Architecture Overview
 
-### ✅ Phase 1: Foundation (Completed)
+### Microservices
 
-1. **Authentication Agent** (`auth_service.py`)
-   - User registration
-   - Login/logout
-   - JWT token management
-   - Password reset (stub)
+1. **User Service** (Port 8000)
+   - Authentication (register, login, OTP verification)
+   - User profile management
+   - Onboarding flow
+   - Publishes events: `user.created`, `user.updated`, `user.logged_in`, `onboarding.completed`
 
-2. **Kraken Integration Agent** (`kraken_service.py`)
-   - API key storage in Vault
-   - Connection testing
-   - Key management (CRUD)
+2. **Kraken Service** (Port 8001)
+   - Kraken API key management
+   - Trading data endpoints
+   - Bot status management
+   - Consumes: `user.created`, `bot.trade.executed`, `bot.trade.skipped`
+   - Publishes: `kraken.key.connected`, `kraken.key.disconnected`, `kraken.key.updated`, `trade.executed`
 
-3. **Trading Data Agent** (`trading_data_service.py`)
-   - Live trading data (cached)
-   - OHLC data
-   - Balance information
-   - Trading pairs
+3. **Bot Service** (Port 8002 - in `muckai/muckai/`)
+   - Trading bot execution
+   - Consumes: `bot.start`, `bot.stop`, `bot.trigger_trade` (from RabbitMQ)
+   - Publishes: `bot.trade.executed`, `bot.trade.skipped` (to Kafka), `bot.started`, `bot.stopped`, `bot.error` (to RabbitMQ)
 
-4. **Bot Status Agent** (`bot_status_service.py`)
-   - Bot status tracking
-   - Execution history
-   - Trade history
-   - Performance metrics
+### Shared Infrastructure
 
-5. **Dashboard Service** (`dashboard_service.py`)
-   - Aggregated dashboard data
-   - Statistics
-   - Recent trades
-
-6. **User Service** (`user_service.py`)
-   - Profile management
-   - Password changes
-
-7. **Admin Management Agent** (`admin.py` - stub)
-   - Admin endpoints structure
-   - Ready for implementation
-
-## 📊 Database Schema (12 Tables)
-
-1. `users` - User accounts
-2. `kraken_keys` - Encrypted API keys (Vault references)
-3. `trades` - Trade records
-4. `bot_status` - Bot execution status
-5. `bot_executions` - Bot execution history
-6. `notifications` - User notifications
-7. `support_tickets` - Support tickets
-8. `audit_logs` - System audit trail
-9. `roles` - RBAC roles
-10. `permissions` - RBAC permissions
-11. `role_permissions` - Role-permission mapping
-12. `user_roles` - User-role mapping
+- **`app/models/`**: Shared database models used by multiple services
+- **`app/schemas/`**: Shared Pydantic schemas
+- **`app/utils/`**: Shared utilities (event publisher, Kafka consumer, RabbitMQ client, etc.)
+- **`app/services/events/`**: Event publishing infrastructure
+- **`alembic/`**: Centralized migration system that imports models from all services
 
 ## 🔧 Configuration
 
@@ -142,11 +171,13 @@ Required variables:
 - `APP_NAME`, `DEBUG`, `API_V1_PREFIX`
 - `SECRET_KEY` (auto-generated if empty)
 - `ACCESS_TOKEN_EXPIRE_MINUTES`, `REFRESH_TOKEN_EXPIRE_DAYS`
-- `DATABASE_URL`
+- `DATABASE_URL` (shared database)
 - `REDIS_HOST`, `REDIS_PORT`, `REDIS_DB`, `REDIS_PASSWORD`
 - `VAULT_URL`, `VAULT_TOKEN`, `VAULT_MOUNT_PATH`
 - `KRAKEN_API_BASE_URL`
 - `CORS_ORIGINS`
+- `KAFKA_BOOTSTRAP_SERVERS`, `KAFKA_*` (Kafka configuration)
+- `RABBITMQ_HOST`, `RABBITMQ_PORT`, `RABBITMQ_USER`, `RABBITMQ_PASSWORD`, `RABBITMQ_VHOST`
 
 ## 🚀 Quick Start
 
@@ -161,45 +192,68 @@ Required variables:
    pip install -r requirements.txt
    ```
 
-3. **Run migrations:**
+3. **Run migrations (centralized):**
    ```bash
    alembic revision --autogenerate -m "Initial migration"
    alembic upgrade head
    ```
 
-4. **Start server:**
+4. **Start all microservices:**
    ```bash
-   uvicorn app.main:app --reload
+   python start_services.py
+   ```
+
+   Or start individually:
+   ```bash
+   # User Service
+   cd services/user-service
+   uvicorn main:app --host 127.0.0.1 --port 8000
+
+   # Kraken Service
+   cd services/kraken-service
+   uvicorn main:app --host 127.0.0.1 --port 8001
    ```
 
 5. **Access API docs:**
-   - Swagger: http://localhost:8000/docs
-   - ReDoc: http://localhost:8000/redoc
+   - User Service: http://localhost:8000/docs
+   - Kraken Service: http://localhost:8001/docs
 
-## 📝 API Endpoints Summary
+## 📊 Database Schema
 
-- **Authentication**: 7 endpoints
-- **Kraken**: 6 endpoints
-- **Trading Data**: 5 endpoints
-- **Bot Status**: 6 endpoints
-- **Dashboard**: 4 endpoints
-- **Profile**: 4 endpoints
-- **Admin**: 48 endpoints (stub)
+All services share the same PostgreSQL database. Models are defined in:
+- `app/models/` - Shared models
+- `services/user-service/models/` - User service models
+- `services/kraken-service/models/` - Kraken service models (if any)
 
-**Total: ~80 endpoints** (as per BMAD-METHOD V6 spec)
+Centralized migrations in `alembic/` import models from all services.
+
+## 🔄 Messaging Architecture
+
+### Kafka (Event Streaming)
+- `user.events` - User lifecycle events
+- `onboarding.events` - Onboarding events
+- `kraken.events` - Kraken API events
+- `trading.events` - Trading events
+
+### RabbitMQ (Commands & Real-time)
+- `bot.start`, `bot.stop`, `bot.trigger_trade` - Bot commands
+- `bot.started`, `bot.stopped`, `bot.error` - Bot status updates
+- `kraken.key.test.failed` - Alerts
 
 ## ✨ Features
 
+- ✅ Microservices architecture
+- ✅ Centralized database migrations
+- ✅ Hybrid messaging (Kafka + RabbitMQ)
+- ✅ Event-driven communication
 - ✅ JWT-based authentication
 - ✅ Role-based access control (RBAC)
 - ✅ Redis caching
 - ✅ HashiCorp Vault integration (optional)
-- ✅ PostgreSQL database
+- ✅ PostgreSQL database (shared)
 - ✅ CORS configuration
-- ✅ Structured logging ready
-- ✅ Clean architecture
-- ✅ Type hints throughout
-- ✅ Pydantic validation
+- ✅ Structured logging
+- ✅ Service resilience (graceful degradation)
 
 ## 🔒 Security
 
@@ -210,17 +264,13 @@ Required variables:
 - Admin-only endpoints protected
 - CORS configured
 
-## 📦 Next Steps
+## 📝 Migration from Monolithic
 
-1. Complete admin endpoints implementation
-2. Add notification service
-3. Add support ticket service
-4. Implement password reset email
-5. Add comprehensive tests
-6. Set up EFK stack integration
-7. Performance optimization
+The old monolithic code in `app/api/v1/` and `app/services/` has been removed. All functionality is now in microservices:
+- User Service handles all authentication and user management
+- Kraken Service handles all Kraken API and trading operations
+- Shared utilities remain in `app/utils/` and `app/services/events/`
 
 ---
 
-**Status**: ✅ Foundation Complete - Ready for Development
-
+**Status**: ✅ Microservices Architecture Complete

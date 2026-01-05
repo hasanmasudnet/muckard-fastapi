@@ -10,7 +10,34 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 from app.database import Base
 from app.config import settings
-from app.models import *  # Import all models
+
+# Import all shared models from app.models
+from app.models import *  # Import all shared models
+
+# Import service-specific models for centralized migrations
+# User Service models
+try:
+    # Add services/user-service directory to path for imports
+    user_service_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'services', 'user-service')
+    if user_service_path not in sys.path:
+        sys.path.insert(0, user_service_path)
+    
+    # Import user-service models (these use their own Base, but we need to import them for Alembic to see them)
+    # Note: These models should ideally use app.database.Base for consistency
+    from models import *  # User, OTPVerification
+except ImportError as e:
+    # Service models may not exist or may use app.models - that's okay
+    pass
+
+# Import kraken-service models if they exist
+try:
+    kraken_service_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'services', 'kraken-service')
+    if kraken_service_path not in sys.path:
+        sys.path.insert(0, kraken_service_path)
+    from models import *
+except ImportError:
+    # Kraken service may not have its own models (uses app.models) - that's okay
+    pass
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -26,6 +53,7 @@ if config.config_file_name is not None:
 
 # add your model's MetaData object here
 # for 'autogenerate' support
+# This includes metadata from all imported models (app.models + service models)
 target_metadata = Base.metadata
 
 # other values from the config, defined by the needs of env.py,

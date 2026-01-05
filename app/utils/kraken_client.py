@@ -1,12 +1,26 @@
 import httpx
+import logging
 from typing import Dict, Any, Optional
 from app.config import settings
+
+logger = logging.getLogger(__name__)
+
+
+def validate_key_mode():
+    """Warn if trading keys are used in development"""
+    if settings.DEBUG and settings.KRAKEN_KEY_MODE == "trading":
+        logger.warning("⚠️  WARNING: Trading keys are enabled in DEBUG mode!")
+        logger.warning("   This is dangerous - trading keys should only be used in production")
+        logger.warning("   Set KRAKEN_KEY_MODE=readonly for development")
 
 
 class KrakenClient:
     """Kraken API client wrapper"""
     
     def __init__(self, api_key: str, api_secret: str):
+        # Validate key mode on initialization
+        validate_key_mode()
+        
         self.api_key = api_key
         self.api_secret = api_secret
         self.base_url = settings.KRAKEN_API_BASE_URL

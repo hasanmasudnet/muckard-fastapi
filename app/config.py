@@ -35,6 +35,13 @@ class Settings(BaseSettings):
     # Kraken API (from .env)
     KRAKEN_API_BASE_URL: str = "https://api.kraken.com"
     
+    # Kraken API Keys (from .env)
+    KRAKEN_API_KEY_READONLY: str = ""
+    KRAKEN_API_SECRET_READONLY: str = ""
+    KRAKEN_API_KEY_TRADING: str = ""
+    KRAKEN_API_SECRET_TRADING: str = ""
+    KRAKEN_KEY_MODE: str = "readonly"  # "readonly" or "trading"
+    
     # CORS (from .env)
     CORS_ORIGINS: str = "http://localhost:3000"  # Default if not in .env
     
@@ -75,6 +82,20 @@ class Settings(BaseSettings):
     def cors_origins_list(self) -> List[str]:
         """Parse CORS origins from comma-separated string"""
         return [origin.strip() for origin in self.CORS_ORIGINS.split(",") if origin.strip()]
+    
+    @property
+    def kraken_api_key(self) -> str:
+        """Get appropriate Kraken API key based on mode"""
+        if self.KRAKEN_KEY_MODE == "trading":
+            return self.KRAKEN_API_KEY_TRADING
+        return self.KRAKEN_API_KEY_READONLY
+    
+    @property
+    def kraken_api_secret(self) -> str:
+        """Get appropriate Kraken API secret based on mode"""
+        if self.KRAKEN_KEY_MODE == "trading":
+            return self.KRAKEN_API_SECRET_TRADING
+        return self.KRAKEN_API_SECRET_READONLY
 
 
 settings = Settings()
